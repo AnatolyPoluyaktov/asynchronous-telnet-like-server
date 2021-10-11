@@ -1,2 +1,10 @@
 .idea/
 cmake-build-debug
+build
+cmake_install.cmake
+CMakeCache.txt
+Makefile
+telnet_like_server.cbp
+Testing
+CMakeFiles
+telnet_like_server

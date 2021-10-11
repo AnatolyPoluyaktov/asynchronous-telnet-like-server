@@ -9,6 +9,8 @@
 #include <vector>
 #include <iostream>
 #include <thread>
+#include <signal.h>
+
 
 const static int MAX=1024;
 
@@ -25,7 +27,13 @@ struct sock_tr
     sockaddr_in ssin, csin;
     socklen_t socklen = sizeof(sockaddr);
 };
-
+sock_tr sock;
+void sigint_handler(int sig)
+{
+  close(sock.connected_fd);
+  close(sock.socket_fd);
+  std::cout << "server finished job";
+}
 void err(int ret, const char str[])
 {
     if(ret==-1)
@@ -46,48 +54,14 @@ std::string exec(const char* cmd) {
     }
     return result;
 }
-//void data_pr(sock_tr* s, char* buf, const int len)
-//{
-//    int fd_p[2];
-//    pipe(fd_p);
-//    if(fork()==0)
-//    {
-//        close(fd_p[1]);
-//
-//        //read(fd_p[0], &buf, strlen(buf));
-//    }
-//    else
-//    {
-//        close(fd_p[0]);
-//        execl("/bin/bash", );
-//        //write(fd_p[1], &buf, strlen(buf));
-//    }
-
-
-/*   char buf1[BUFSIZ];
-    FILE *f;
-    buf[len-1] = '\0';
-    buf[len-2] = '\0';
-    f = popen(buf, "r");
-    int num=1;
-    while(num>0)
-    {
-        num=fread(buf1, 1, 1024, f);
-        send(s->connected_fd, buf1, num, 0);
-    }
-    std::memset(buf1,0,1024);
-    buf[len] = '\0';
-    write(s->connected_fd, ">>", 2);
-    pclose(f);
-*/
-//}
 
 int main(int argc, char *argv[])
 {
+
+    signal(SIGINT, sigint_handler);
     int buflen;
     char buf[BUFSIZ];
     epoll_tr str;
-    sock_tr sock;
 
     if (argc != 2)
     {
@@ -104,7 +78,6 @@ int main(int argc, char *argv[])
     err((bind(sock.socket_fd, (struct sockaddr *)&sock.ssin,
               sock.socklen)), "bind");
     err((listen(sock.socket_fd, 5)), "listen");
-
     str.epoll_fd = epoll_create1(0);
     err(str.epoll_fd, "epoll_create1");
     str.ev.events = EPOLLIN;
@@ -125,7 +98,6 @@ int main(int argc, char *argv[])
                 std::cout<<"accept"<<"\n";
 
 
-                //write(sock.connect_fd, ">>", 2);
                 str.ev.events = EPOLLIN;
                 str.ev.data.fd = sock.connected_fd;
                 err((epoll_ctl(str.epoll_fd, EPOLL_CTL_ADD,
@@ -145,7 +117,6 @@ int main(int argc, char *argv[])
 
                 }
                 else {
-                    //data_pr(&sock, buf, buflen);
                     std::string ans = exec(buf);
                     std::cout << ans<<std::endl;
                     ::send(sock.connected_fd,ans.c_str(),ans.size(),0);
