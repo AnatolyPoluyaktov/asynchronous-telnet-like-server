@@ -30,7 +30,6 @@ struct sock_tr
 sock_tr sock;
 void sigint_handler(int sig)
 {
-  close(sock.connected_fd);
   close(sock.socket_fd);
   std::cout << "server finished job";
 }
