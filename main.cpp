@@ -9,7 +9,7 @@
 #include <vector>
 #include <iostream>
 #include <thread>
-#include <signal.h>
+#include <csignal>
 
 
 const static int MAX=1024;
@@ -42,7 +42,7 @@ void err(int ret, const char str[])
     }
 }
 std::string exec(const char* cmd) {
-    std::array<char, 128> buffer;
+    std::array<char, 128> buffer{};
     std::string result;
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
     if (!pipe) {
@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
     signal(SIGINT, sigint_handler);
     int buflen;
     char buf[BUFSIZ];
-    epoll_tr str;
+    epoll_tr str{};
 
     if (argc != 2)
     {
@@ -77,6 +77,7 @@ int main(int argc, char *argv[])
     err((bind(sock.socket_fd, (struct sockaddr *)&sock.ssin,
               sock.socklen)), "bind");
     err((listen(sock.socket_fd, 5)), "listen");
+    std::cout << "server listen on " << argv[1] <<  " port"<<std::endl;
     str.epoll_fd = epoll_create1(0);
     err(str.epoll_fd, "epoll_create1");
     str.ev.events = EPOLLIN;
@@ -94,7 +95,7 @@ int main(int argc, char *argv[])
                 sock.connected_fd = accept(sock.socket_fd,
                                            (struct sockaddr *)&sock.csin, &sock.socklen);
                 err(sock.connected_fd, "accept");
-                std::cout<<"accept"<<"\n";
+                std::cout<<"accepted client: "<< sock.connected_fd<<std::endl;
 
 
                 str.ev.events = EPOLLIN;
@@ -110,13 +111,17 @@ int main(int argc, char *argv[])
                 {
                     err((epoll_ctl(str.epoll_fd, EPOLL_CTL_DEL,
                                    sock.connected_fd, &str.evlist[i])),"epoll_ctl3");
+                    std::cout<<"closed client: "<<sock.connected_fd <<std::endl;
                     close(sock.connected_fd);
                     err(sock.connected_fd, "close");
-                    std::cout<<"close"<<"\n";
+
 
                 }
                 else {
+                    std::cout <<"got shell command from:" <<
+                     "from client "<<  sock.connected_fd<<": "<<buf <<std::endl;
                     std::string ans = exec(buf);
+                    std::cout << "send message to client " << sock.connected_fd <<": " <<std::endl;
                     std::cout << ans<<std::endl;
                     ::send(sock.connected_fd,ans.c_str(),ans.size(),0);
                 }
